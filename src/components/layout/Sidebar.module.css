@@ -1,0 +1,249 @@
+/* Sidebar.module.css */
+
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: var(--sidebar-width);
+  background: var(--bg-card);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  transition: width 0.25s cubic-bezier(0.4,0,0.2,1);
+  z-index: 100;
+  overflow: hidden;
+}
+
+.sidebar.collapsed {
+  width: var(--sidebar-collapsed);
+}
+
+/* Brand */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 20px 16px 16px;
+  border-bottom: 1px solid var(--border);
+  min-height: 64px;
+  overflow: hidden;
+}
+
+.logoMark {
+  width: 36px;
+  height: 36px;
+  background: #111;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -1px;
+}
+
+.brandText {
+  overflow: hidden;
+  white-space: nowrap;
+  opacity: 1;
+  transition: opacity 0.2s;
+}
+
+.collapsed .brandText {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.brandName {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.3px;
+  line-height: 1.2;
+}
+
+.brandSub {
+  font-size: 10px;
+  color: var(--text-muted);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+/* Toggle btn */
+.toggleBtn {
+  position: absolute;
+  top: 20px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  background: var(--bg-card);
+  border: 1.5px solid var(--border);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: background 0.2s, color 0.2s, transform 0.25s;
+  z-index: 10;
+}
+
+.toggleBtn:hover {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.collapsed .toggleBtn {
+  transform: rotate(180deg);
+  right: -12px;
+}
+
+/* Nav */
+.nav {
+  flex: 1;
+  padding: 12px 8px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.navSection {
+  margin-bottom: 4px;
+}
+
+.sectionLabel {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 8px 10px 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  opacity: 1;
+  transition: opacity 0.15s;
+}
+
+.collapsed .sectionLabel {
+  opacity: 0;
+  height: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: 13.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+  position: relative;
+  text-decoration: none;
+  margin-bottom: 1px;
+}
+
+.navItem:hover {
+  background: var(--bg-main);
+  color: var(--text-primary);
+}
+
+.navItem.active {
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
+.navItem.active .navIcon {
+  color: var(--accent);
+}
+
+.navIcon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.navItem.active .navIcon {
+  background: rgba(232,83,58,0.12);
+}
+
+.navLabel {
+  flex: 1;
+  overflow: hidden;
+  opacity: 1;
+  transition: opacity 0.15s;
+}
+
+.collapsed .navLabel {
+  opacity: 0;
+  width: 0;
+}
+
+/* Tooltip on collapsed */
+.navItem .tooltip {
+  display: none;
+  position: absolute;
+  left: calc(100% + 12px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: #111;
+  color: #fff;
+  font-size: 12px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 200;
+}
+
+.collapsed .navItem:hover .tooltip {
+  display: block;
+}
+
+/* Bottom */
+.bottom {
+  padding: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.logoutBtn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 13.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+  background: none;
+  border: none;
+  width: 100%;
+  font-family: var(--font-body);
+}
+
+.logoutBtn:hover {
+  background: rgba(239,68,68,0.08);
+  color: #EF4444;
+}
+
+.logoutBtn .navLabel {
+  text-align: left;
+}

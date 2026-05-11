@@ -1,0 +1,79 @@
+/* src/components/shared/Form.module.css */
+
+.body { padding: 24px; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.full { grid-column: 1 / -1; }
+
+.field { display: flex; flex-direction: column; gap: 6px; }
+.label { font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+.required { color: var(--accent); margin-left: 2px; }
+
+.input, .select, .textarea {
+  height: 42px; padding: 0 14px; border: 1.5px solid var(--border);
+  border-radius: var(--radius-md); background: var(--bg-main);
+  font-size: 14px; font-family: var(--font-body); color: var(--text-primary);
+  outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+  width: 100%; box-sizing: border-box;
+}
+.input:focus, .select:focus, .textarea:focus {
+  border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light);
+}
+.input.error, .select.error { border-color: #EF4444; box-shadow: 0 0 0 3px rgba(239,68,68,0.08); }
+.textarea { height: auto; padding: 12px 14px; resize: vertical; min-height: 90px; }
+
+.errorMsg { font-size: 11px; color: #EF4444; }
+
+.sectionTitle {
+  font-family: var(--font-display); font-size: 13px; font-weight: 700;
+  color: var(--text-primary); letter-spacing: -0.2px;
+  padding-bottom: 10px; border-bottom: 1px solid var(--border);
+  margin-bottom: 4px; grid-column: 1 / -1;
+}
+
+/* Document upload */
+.uploadBox {
+  border: 2px dashed var(--border); border-radius: var(--radius-md);
+  padding: 20px; text-align: center; cursor: pointer; transition: all 0.2s;
+  background: var(--bg-main);
+}
+.uploadBox:hover { border-color: var(--accent); background: var(--accent-light); }
+.uploadBox input { display: none; }
+.uploadLabel { font-size: 13px; color: var(--text-muted); margin-top: 8px; }
+.uploadSub { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+.uploadedFile {
+  display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+  background: var(--green-light); border: 1px solid rgba(61,184,122,0.25);
+  border-radius: var(--radius-sm); font-size: 12px; color: var(--green); font-weight: 500;
+}
+
+/* Footer */
+.footer {
+  display: flex; align-items: center; justify-content: flex-end; gap: 10px;
+  padding: 16px 24px; border-top: 1px solid var(--border); background: var(--bg-main);
+}
+.cancelBtn {
+  height: 40px; padding: 0 20px; border: 1.5px solid var(--border); border-radius: var(--radius-md);
+  background: var(--bg-card); font-size: 13px; font-weight: 600; color: var(--text-secondary);
+  cursor: pointer; font-family: var(--font-body); transition: all 0.15s;
+}
+.cancelBtn:hover { border-color: var(--border-strong); color: var(--text-primary); }
+.submitBtn {
+  height: 40px; padding: 0 24px; background: var(--accent); color: #fff; border: none;
+  border-radius: var(--radius-md); font-family: var(--font-display); font-size: 13px;
+  font-weight: 600; cursor: pointer; transition: background 0.2s; display: flex;
+  align-items: center; gap: 8px;
+}
+.submitBtn:hover:not(:disabled) { background: var(--accent-hover); }
+.submitBtn:disabled { opacity: 0.6; cursor: not-allowed; }
+.spinner {
+  width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite;
+}
+
+/* Source badge */
+.sourceBadge {
+  display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 600;
+  padding: 2px 8px; border-radius: 99px; text-transform: uppercase; letter-spacing: 0.5px;
+}
+.sourceAdmin { background: var(--amber-light); color: var(--amber); }
+.sourceSelf  { background: var(--blue-light);  color: var(--blue);  }
