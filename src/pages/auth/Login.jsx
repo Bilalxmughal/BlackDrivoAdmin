@@ -67,6 +67,17 @@ export default function Login() {
         ? ['PK', 'US']
         : access.split(',').map(c => c.trim()).filter(Boolean)
 
+      // Check if password change required
+      if (prof.invitation_status === 'password_change_required') {
+        initCountry(access)
+        await supabase.from('users')
+          .update({ last_login_at: new Date().toISOString() })
+          .eq('id', data.user.id)
+        toast('Please set a new password to continue.', { icon: '🔐' })
+        navigate('/set-password')
+        return
+      }
+
       if (allowed.length === 1) {
         // Single country — skip country select, go directly
         initCountry(access)

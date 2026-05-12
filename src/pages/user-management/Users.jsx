@@ -182,7 +182,7 @@ export default function Users() {
   }
 
   const formatCountry = (ca) => {
-    if (!ca || ca === 'ALL') return ''
+    if (!ca || ca === 'ALL') return '🌍'
     return ca.split(',').map(c => c.trim() === 'PK' ? '🇵🇰' : '🇺🇸').join(' ')
   }
 
@@ -373,7 +373,7 @@ export default function Users() {
               <label className={fStyles.label}>Country Access <span className={fStyles.required}>*</span></label>
               {form.role === 'super_admin'
                 ? <div style={{ padding: '12px 14px', background: 'var(--bg-main)', borderRadius: 'var(--radius-md)', border: '1.5px solid var(--border)', fontSize: 14, color: 'var(--text-muted)' }}>
-                    All Countries — Super Admin gets full access
+                    🌍 All Countries — Super Admin gets full access
                   </div>
                 : <div style={{ display: 'flex', gap: 10 }}>
                     {COUNTRY_OPTIONS.map(c => (
@@ -441,7 +441,7 @@ export default function Users() {
               { label: 'Email',        value: createdUser?.email },
               { label: 'Password',     value: createdUser?.password },
               { label: 'Role',         value: createdUser?.role?.replace('_', ' ').toUpperCase() },
-              { label: 'Country',      value: createdUser?.country === 'ALL' ? 'All Countries' : createdUser?.country?.split(',').map(c => c === 'PK' ? '🇵🇰 Pakistan' : '🇺🇸 USA').join(', ') },
+              { label: 'Country',      value: createdUser?.country === 'ALL' ? '🌍 All Countries' : createdUser?.country?.split(',').map(c => c === 'PK' ? '🇵🇰 Pakistan' : '🇺🇸 USA').join(', ') },
             ].map(({ label, value }) => (
               <div key={label} style={{ display: 'flex', marginBottom: 10 }}>
                 <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', width: 100, flexShrink: 0 }}>{label}</span>
@@ -485,7 +485,7 @@ export default function Users() {
                 { label: 'Role',         value: viewUser.role?.replace('_', ' ').toUpperCase() },
                 { label: 'Department',   value: viewUser.department || '—' },
                 { label: 'Phone',        value: viewUser.phone      || '—' },
-                { label: 'Country',      value: viewUser.country_access === 'ALL' ? 'All' : (viewUser.country_access || 'US').split(',').map(c => c.trim() === 'PK' ? 'PK' : 'US').join(', ') },
+                { label: 'Country',      value: viewUser.country_access === 'ALL' ? '🌍 All' : (viewUser.country_access || 'US').split(',').map(c => c.trim() === 'PK' ? '🇵🇰 PK' : '🇺🇸 US').join(', ') },
                 { label: 'Last Login',   value: viewUser.last_login_at ? fmtDateTime(viewUser.last_login_at) : 'Never' },
                 { label: 'Member Since', value: fmtDateTime(viewUser.created_at) },
               ].map(({ label, value }) => (
