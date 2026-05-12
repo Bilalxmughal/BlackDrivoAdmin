@@ -17,15 +17,13 @@ export default function SetPassword() {
 
   // Supabase sends the session via URL hash after clicking email link
   useEffect(() => {
+    // Check if user is already logged in (came from login with temp password)
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setReady(!!session)
+      if (session) setReady(true)
     })
 
-    // Listen for auth state — Supabase auto-handles the token from URL
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
-        setReady(true)
-      }
+      if (session) setReady(true)
     })
     return () => subscription.unsubscribe()
   }, [])
@@ -50,7 +48,7 @@ export default function SetPassword() {
       const { data, error } = await supabase.auth.updateUser({ password: form.password })
       if (error) throw error
 
-      // Update users table — mark as active
+      // Mark invitation_status as active
       if (data?.user) {
         await supabase.from('users')
           .update({
@@ -61,7 +59,7 @@ export default function SetPassword() {
           .eq('email', data.user.email)
       }
 
-      toast.success('Password set! Welcome to BlackDrivo.')
+      toast.success('Password updated! Welcome to BlackDrivo.')
       navigate('/dashboard')
     } catch (err) {
       toast.error(err.message || 'Failed to set password. Link may have expired.')

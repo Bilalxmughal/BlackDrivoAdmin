@@ -1,6 +1,6 @@
 // src/pages/user-management/Users.jsx
 import { useEffect, useState, useCallback } from 'react'
-import { Plus, Eye, Trash2, Search, RefreshCw, Mail, Shield, Clock, CheckCircle } from 'lucide-react'
+import { Plus, Eye, Trash2, Search, RefreshCw, Shield, Copy, CheckCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { supabase } from '../../supabase/client'
 import Modal from '../../components/shared/Modal'
@@ -20,7 +20,20 @@ const COUNTRY_OPTIONS = [
   { code: 'PK', label: 'Pakistan',      flag: '🇵🇰' },
   { code: 'US', label: 'United States', flag: '🇺🇸' },
 ]
-const INIT = { name: '', email: '', phone: '', department: '', role: 'ops', countries: ['US'] }
+const INIT = { name: '', email: '', tempPassword: '', phone: '', department: '', role: 'ops', countries: ['US'] }
+
+// Generate a random temp password meeting requirements
+const genTempPassword = () => {
+  const upper   = 'ABCDEFGHJKLMNPQRSTUVWXYZ'
+  const lower   = 'abcdefghjkmnpqrstuvwxyz'
+  const digits  = '23456789'
+  const special = '!@#$%&*'
+  const rand = (str) => str[Math.floor(Math.random() * str.length)]
+  const base = rand(upper) + rand(lower) + rand(lower) + rand(lower) +
+               rand(digits) + rand(digits) + rand(special) + rand(lower)
+  // Shuffle
+  return base.split('').sort(() => Math.random() - 0.5).join('')
+}
 
 export default function Users() {
   const [data, setData]         = useState([])
@@ -30,49 +43,26 @@ export default function Users() {
   const [roleFilter, setRole]   = useState('all')
   const [addOpen, setAddOpen]   = useState(false)
   const [viewUser, setViewUser] = useState(null)
+  const [createdUser, setCreated]= useState(null) // show after creation
   const [form, setForm]         = useState(INIT)
   const [errors, setErrors]     = useState({})
   const [saving, setSaving]     = useState(false)
+  const [copied, setCopied]     = useState(false)
 
   const fetch = useCallback(async () => {
     setLoading(true)
     try {
-      // Fetch confirmed users
       let q = supabase
         .from('users')
         .select('id, name, email, phone, role, department, status, country_access, invitation_status, last_login_at, created_at', { count: 'exact' })
       if (roleFilter !== 'all') q = q.eq('role', roleFilter)
       if (search) q = q.or(`name.ilike.%${search}%,email.ilike.%${search}%`)
       q = q.order('created_at', { ascending: false })
-      const { data: confirmedUsers, count, error } = await q
+      const { data: rows, count, error } = await q
       if (error) throw error
-
-      // Fetch pending invites (not yet accepted)
-      let pq = supabase
-        .from('pending_invites')
-        .select('id, name, email, phone, role, department, country_access, created_at')
-      if (search) pq = pq.or(`name.ilike.%${search}%,email.ilike.%${search}%`)
-      if (roleFilter !== 'all') pq = pq.eq('role', roleFilter)
-      const { data: pendingInvites } = await pq
-
-      // Merge — pending invites shown as pending rows
-      const confirmedEmails = new Set((confirmedUsers || []).map(u => u.email?.toLowerCase()))
-      const pendingRows = (pendingInvites || [])
-        .filter(inv => !confirmedEmails.has(inv.email?.toLowerCase()))
-        .map(inv => ({
-          ...inv,
-          status:            'pending',
-          invitation_status: 'pending',
-          last_login_at:     null,
-          _isPending:        true,
-        }))
-
-      const combined = [...(confirmedUsers || []), ...pendingRows]
-        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-
-      setData(combined)
-      setTotal(combined.length)
-    } catch (e) { toast.error('Failed to load users: ' + e.message) }
+      setData(rows || [])
+      setTotal(count || 0)
+    } catch (e) { toast.error('Failed to load users') }
     finally { setLoading(false) }
   }, [search, roleFilter])
 
@@ -81,26 +71,25 @@ export default function Users() {
   const set = (k, v) => { setForm(f => ({ ...f, [k]: v })); setErrors(e => ({ ...e, [k]: '' })) }
 
   const toggleCountry = (code) => {
+    if (form.role === 'super_admin') return
     setForm(f => {
       const curr = f.countries || []
-      if (form.role === 'super_admin') return { ...f, countries: ['PK', 'US'] }
-      const next = curr.includes(code)
-        ? curr.filter(c => c !== code)
-        : [...curr, code]
-      return { ...f, countries: next.length ? next : curr } // at least 1
+      const next = curr.includes(code) ? curr.filter(c => c !== code) : [...curr, code]
+      return { ...f, countries: next.length ? next : curr }
     })
   }
 
   const validate = () => {
     const e = {}
-    if (!form.name.trim())  e.name  = 'Name required'
-    if (!form.email.trim()) e.email = 'Email required'
+    if (!form.name.trim())         e.name  = 'Name required'
+    if (!form.email.trim())        e.email = 'Email required'
     else if (!/\S+@\S+\.\S+/.test(form.email)) e.email = 'Invalid email'
-    if (!form.role) e.role = 'Role required'
+    if (!form.tempPassword.trim()) e.tempPassword = 'Temporary password required'
+    if (!form.role)                e.role  = 'Role required'
     return e
   }
 
-  const handleInvite = async () => {
+  const handleCreate = async () => {
     const errs = validate()
     if (Object.keys(errs).length) { setErrors(errs); return }
     setSaving(true)
@@ -112,39 +101,65 @@ export default function Users() {
 
       const emailClean = form.email.toLowerCase().trim()
 
-      // Step 1: Save in pending_invites — this IS the list source for pending users
-      const { error: inviteErr } = await supabase
-        .from('pending_invites')
-        .upsert({
-          email:          emailClean,
-          name:           form.name.trim(),
-          phone:          form.phone       || null,
-          department:     form.department  || null,
-          role:           form.role,
-          country_access: countryAccess,
-        }, { onConflict: 'email' })
-
-      if (inviteErr) throw new Error('Invite save failed: ' + inviteErr.message)
-
-      // Step 2: Send invite email via Supabase Auth
-      // resetPasswordForEmail works even for new users — sends set-password link
-      const { error: emailErr } = await supabase.auth.resetPasswordForEmail(emailClean, {
-        redirectTo: `${window.location.origin}/set-password`,
+      // Step 1: Create auth user via signUp
+      // Make sure "Confirm email" is OFF in Supabase Auth settings
+      const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
+        email:    emailClean,
+        password: form.tempPassword,
+        options:  { data: { name: form.name.trim() } }
       })
 
-      if (emailErr && !emailErr.message?.includes('not found')) {
-        console.warn('Email error:', emailErr.message)
-        toast(`Invite saved. Email: ${emailErr.message}`, { icon: '⚠️' })
-      } else {
-        toast.success(`✅ Invite sent to ${emailClean}!`)
+      if (signUpErr) throw new Error(signUpErr.message)
+
+      // signUp returns user even if they already exist (Supabase behavior)
+      // Check if it's a real new user or existing
+      const newUserId = signUpData?.user?.id
+      if (!newUserId) throw new Error('Could not create user. Check Supabase Auth → Email settings → disable "Confirm email".')
+
+      // Step 2: Upsert into users table with full details
+      const { error: dbErr } = await supabase.from('users').upsert({
+        id:                newUserId,
+        name:              form.name.trim(),
+        email:             emailClean,
+        phone:             form.phone      || null,
+        department:        form.department || null,
+        role:              form.role,
+        country_access:    countryAccess,
+        status:            'active',
+        invitation_status: 'password_change_required',
+      }, { onConflict: 'id' })
+
+      if (dbErr) {
+        // Try upsert by email if id conflict
+        const { error: emailUpsertErr } = await supabase.from('users').upsert({
+          id:                newUserId,
+          name:              form.name.trim(),
+          email:             emailClean,
+          phone:             form.phone      || null,
+          department:        form.department || null,
+          role:              form.role,
+          country_access:    countryAccess,
+          status:            'active',
+          invitation_status: 'password_change_required',
+        }, { onConflict: 'email' })
+
+        if (emailUpsertErr) console.warn('DB warn:', emailUpsertErr.message)
       }
 
+      // 3. Show credentials to admin
+      setCreated({
+        name:     form.name.trim(),
+        email:    form.email.toLowerCase().trim(),
+        password: form.tempPassword,
+        role:     form.role,
+        country:  countryAccess,
+      })
       setAddOpen(false)
       setForm(INIT)
       await fetch()
 
     } catch (err) {
-      toast.error(err.message || 'Failed to create invite')
+      toast.error(err.message || 'Failed to create user')
       console.error(err)
     } finally {
       setSaving(false)
@@ -153,39 +168,33 @@ export default function Users() {
 
   const handleDelete = async (u) => {
     if (!confirm(`Remove ${u.name}?`)) return
-    if (u._isPending) {
-      // Delete from pending_invites
-      await supabase.from('pending_invites').delete().eq('email', u.email)
-    } else {
-      await supabase.from('users').delete().eq('id', u.id)
-    }
+    await supabase.from('users').delete().eq('id', u.id)
     toast.success('User removed')
     fetch()
   }
 
-  const sendResetEmail = async (email) => {
-    await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/set-password`,
-    })
-    toast.success('Password reset email sent!')
+  const copyCredentials = () => {
+    if (!createdUser) return
+    navigator.clipboard.writeText(
+      `BlackDrivo Admin Portal\nURL: ${window.location.origin}\nEmail: ${createdUser.email}\nTemp Password: ${createdUser.password}\n\nPlease change your password after first login.`
+    )
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+    toast.success('Credentials copied!')
   }
 
-  const formatCountryAccess = (ca) => {
-    if (!ca || ca === 'ALL') return 'All'
+  const formatCountry = (ca) => {
+    if (!ca || ca === 'ALL') return '🌍'
     return ca.split(',').map(c => c.trim() === 'PK' ? '🇵🇰' : '🇺🇸').join(' ')
   }
 
-  const inviteStatusBadge = (status) => {
-    if (status === 'active' || !status) return null
-    return (
-      <span style={{
-        fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 99,
-        background: 'var(--amber-light)', color: 'var(--amber)',
-        display: 'inline-flex', alignItems: 'center', gap: 3,
-      }}>
-        <Clock size={9} /> Invite Pending
-      </span>
-    )
+  const statusBadge = (u) => {
+    if (u.invitation_status === 'password_change_required') {
+      return { label: 'Must Change Password', bg: 'var(--amber-light)', color: 'var(--amber)' }
+    }
+    if (u.status === 'active') return { label: 'Active', bg: 'var(--green-light)', color: 'var(--green)' }
+    if (u.status === 'pending') return { label: 'Pending', bg: 'var(--amber-light)', color: 'var(--amber)' }
+    return { label: u.status, bg: 'var(--border)', color: 'var(--text-muted)' }
   }
 
   return (
@@ -193,9 +202,13 @@ export default function Users() {
       <div className={styles.header}>
         <div className={styles.headerLeft}>
           <div className={styles.pageTitle}>User Management</div>
-          <div className={styles.pageSub}>Admin panel users, roles and country access</div>
+          <div className={styles.pageSub}>Admin portal users, roles and country access</div>
         </div>
-        <button className={styles.addBtn} onClick={() => { setAddOpen(true); setForm(INIT); setErrors({}) }}>
+        <button className={styles.addBtn} onClick={() => {
+          setAddOpen(true)
+          setForm({ ...INIT, tempPassword: genTempPassword() })
+          setErrors({})
+        }}>
           <Plus size={15} /> Add User
         </button>
       </div>
@@ -227,13 +240,13 @@ export default function Users() {
         <div className={styles.tableHeader}>
           <div>
             <div className={styles.tableTitle}>Admin Users</div>
-            <div className={styles.tableCount}>{total} total users</div>
+            <div className={styles.tableCount}>{total} users</div>
           </div>
         </div>
         <table className={styles.table}>
           <thead>
             <tr>
-              {['User', 'Role', 'Department', 'Country Access', 'Status', 'Last Login', 'Actions'].map(h => (
+              {['User', 'Role', 'Department', 'Country', 'Status', 'Last Login', 'Actions'].map(h => (
                 <th key={h} className={styles.th}>{h}</th>
               ))}
             </tr>
@@ -246,9 +259,10 @@ export default function Users() {
                   ))}</tr>
                 ))
               : data.length === 0
-              ? <tr><td colSpan={7} className={styles.td}><div className={styles.empty}><div className={styles.emptyIcon}>👥</div>No users found</div></td></tr>
+              ? <tr><td colSpan={7} className={styles.td}><div className={styles.empty}><div className={styles.emptyIcon}>👥</div>No users</div></td></tr>
               : data.map(u => {
                   const rc = ROLE_COLORS[u.role] || ROLE_COLORS.ops
+                  const sb = statusBadge(u)
                   return (
                     <tr key={u.id} className={styles.tr} onClick={() => setViewUser(u)}>
                       <td className={styles.td}>
@@ -257,7 +271,6 @@ export default function Users() {
                           <div>
                             <div className={styles.personName}>{u.name}</div>
                             <div className={styles.personSub}>{u.email}</div>
-                            {inviteStatusBadge(u.invitation_status)}
                           </div>
                         </div>
                       </td>
@@ -267,16 +280,10 @@ export default function Users() {
                         </span>
                       </td>
                       <td className={styles.td} style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{u.department || '—'}</td>
+                      <td className={styles.td} style={{ fontSize: 18, letterSpacing: 2 }}>{formatCountry(u.country_access)}</td>
                       <td className={styles.td}>
-                        <span style={{ fontSize: 18, letterSpacing: 2 }}>{formatCountryAccess(u.country_access)}</span>
-                      </td>
-                      <td className={styles.td}>
-                        <span style={{
-                          fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 99,
-                          background: u.status === 'active' ? 'var(--green-light)' : 'var(--amber-light)',
-                          color: u.status === 'active' ? 'var(--green)' : 'var(--amber)',
-                        }}>
-                          {u.invitation_status === 'pending' ? 'Invite Pending' : u.status}
+                        <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 99, background: sb.bg, color: sb.color, whiteSpace: 'nowrap' }}>
+                          {sb.label}
                         </span>
                       </td>
                       <td className={styles.td} style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
@@ -340,23 +347,43 @@ export default function Users() {
               </select>
             </div>
 
-            {/* Country Access — multi-select */}
+            {/* Temp password */}
+            <div className={`${fStyles.field} ${fStyles.full}`}>
+              <label className={fStyles.label}>Temporary Password <span className={fStyles.required}>*</span></label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  className={`${fStyles.input} ${errors.tempPassword ? fStyles.error : ''}`}
+                  placeholder="Temporary password"
+                  value={form.tempPassword}
+                  onChange={e => set('tempPassword', e.target.value)}
+                  style={{ flex: 1, fontFamily: 'monospace', letterSpacing: 1 }}
+                />
+                <button type="button"
+                  onClick={() => set('tempPassword', genTempPassword())}
+                  style={{ height: 42, padding: '0 14px', border: '1.5px solid var(--border)', borderRadius: 'var(--radius-md)', background: 'var(--bg-main)', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', whiteSpace: 'nowrap', fontFamily: 'var(--font-body)' }}>
+                  Generate
+                </button>
+              </div>
+              {errors.tempPassword && <span className={fStyles.errorMsg}>{errors.tempPassword}</span>}
+              <span style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+                User will be required to change this on first login
+              </span>
+            </div>
+
+            {/* Country Access */}
             <div className={`${fStyles.field} ${fStyles.full}`}>
               <label className={fStyles.label}>Country Access <span className={fStyles.required}>*</span></label>
               {form.role === 'super_admin'
-                ? <div style={{ padding: '10px 14px', background: 'var(--bg-main)', borderRadius: 'var(--radius-md)', border: '1.5px solid var(--border)', fontSize: 14, color: 'var(--text-muted)' }}>
-                    🌍 All Countries (Super Admin gets access to all regions)
+                ? <div style={{ padding: '12px 14px', background: 'var(--bg-main)', borderRadius: 'var(--radius-md)', border: '1.5px solid var(--border)', fontSize: 14, color: 'var(--text-muted)' }}>
+                    🌍 All Countries — Super Admin gets full access
                   </div>
-                : <div style={{ display: 'flex', gap: 12 }}>
+                : <div style={{ display: 'flex', gap: 10 }}>
                     {COUNTRY_OPTIONS.map(c => (
-                      <button key={c.code} type="button"
-                        onClick={() => toggleCountry(c.code)}
+                      <button key={c.code} type="button" onClick={() => toggleCountry(c.code)}
                         style={{
                           flex: 1, padding: '14px 16px', borderRadius: 12, cursor: 'pointer',
-                          border: (form.countries || []).includes(c.code)
-                            ? '2px solid var(--accent)' : '2px solid var(--border)',
-                          background: (form.countries || []).includes(c.code)
-                            ? 'var(--accent-light)' : 'var(--bg-main)',
+                          border: (form.countries || []).includes(c.code) ? '2px solid var(--accent)' : '2px solid var(--border)',
+                          background: (form.countries || []).includes(c.code) ? 'var(--accent-light)' : 'var(--bg-main)',
                           display: 'flex', alignItems: 'center', gap: 10, transition: 'all 0.15s',
                         }}>
                         <span style={{ fontSize: 28 }}>{c.flag}</span>
@@ -378,7 +405,7 @@ export default function Users() {
                 <Shield size={12} /> Role Access
               </div>
               <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.7 }}>
-                {form.role === 'super_admin' && '✅ Full access — all pages, all countries, all actions'}
+                {form.role === 'super_admin' && '✅ Full access — all pages, all countries'}
                 {form.role === 'admin'       && '✅ All operational pages · ❌ Roles & Admin Settings'}
                 {form.role === 'ops'         && '✅ Bookings, Dispatch, Passengers, Drivers · ❌ Settings'}
                 {form.role === 'dispatcher'  && '✅ Bookings & Dispatch Map only'}
@@ -389,15 +416,62 @@ export default function Users() {
         </div>
         <div className={fStyles.footer}>
           <button className={fStyles.cancelBtn} onClick={() => setAddOpen(false)}>Cancel</button>
-          <button className={fStyles.submitBtn} onClick={handleInvite} disabled={saving}>
-            {saving ? <span className={fStyles.spinner} /> : <><Mail size={14} /> Send Invite Email</>}
+          <button className={fStyles.submitBtn} onClick={handleCreate} disabled={saving}>
+            {saving ? <span className={fStyles.spinner} /> : <><Plus size={14} /> Create User</>}
           </button>
+        </div>
+      </Modal>
+
+      {/* ── Created User Credentials Modal ── */}
+      <Modal open={!!createdUser} onClose={() => setCreated(null)} title="User Created!" width={460}>
+        <div style={{ padding: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, padding: 16, background: 'var(--green-light)', borderRadius: 12, border: '1px solid rgba(61,184,122,0.25)' }}>
+            <CheckCircle size={24} color="var(--green)" />
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>Account created successfully</div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>Share these credentials with the user</div>
+            </div>
+          </div>
+
+          {/* Credentials box */}
+          <div style={{ background: '#111', borderRadius: 12, padding: 20, marginBottom: 20 }}>
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 14 }}>
+              Login Credentials
+            </div>
+            {[
+              { label: 'Portal URL',   value: window.location.origin },
+              { label: 'Email',        value: createdUser?.email },
+              { label: 'Password',     value: createdUser?.password },
+              { label: 'Role',         value: createdUser?.role?.replace('_', ' ').toUpperCase() },
+              { label: 'Country',      value: createdUser?.country === 'ALL' ? '🌍 All Countries' : createdUser?.country?.split(',').map(c => c === 'PK' ? '🇵🇰 Pakistan' : '🇺🇸 USA').join(', ') },
+            ].map(({ label, value }) => (
+              <div key={label} style={{ display: 'flex', marginBottom: 10 }}>
+                <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', width: 100, flexShrink: 0 }}>{label}</span>
+                <span style={{ fontSize: 13, color: '#fff', fontWeight: label === 'Password' ? 700 : 400, fontFamily: label === 'Password' ? 'monospace' : 'var(--font-body)', letterSpacing: label === 'Password' ? 1 : 0 }}>{value}</span>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ background: 'var(--amber-light)', border: '1px solid rgba(245,166,35,0.3)', borderRadius: 10, padding: '12px 14px', marginBottom: 20, fontSize: 13, color: 'var(--amber)', lineHeight: 1.6 }}>
+            ⚠️ User will be asked to change their password on first login.
+          </div>
+
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={copyCredentials}
+              style={{ flex: 1, height: 42, background: copied ? 'var(--green)' : '#111', color: '#fff', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontFamily: 'var(--font-body)', transition: 'background 0.2s' }}>
+              {copied ? <><CheckCircle size={15} /> Copied!</> : <><Copy size={15} /> Copy Credentials</>}
+            </button>
+            <button onClick={() => setCreated(null)}
+              style={{ height: 42, padding: '0 20px', border: '1.5px solid var(--border)', borderRadius: 10, background: 'var(--bg-card)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)', color: 'var(--text-secondary)' }}>
+              Done
+            </button>
+          </div>
         </div>
       </Modal>
 
       {/* ── View User Modal ── */}
       {viewUser && (
-        <Modal open={!!viewUser} onClose={() => setViewUser(null)} title="User Details" width={480}>
+        <Modal open={!!viewUser} onClose={() => setViewUser(null)} title="User Details" width={460}>
           <div style={{ padding: 24 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
               <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, color: '#fff' }}>
@@ -406,42 +480,25 @@ export default function Users() {
               <div>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700 }}>{viewUser.name}</div>
                 <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>{viewUser.email}</div>
-                <div style={{ marginTop: 6, display: 'flex', gap: 8 }}>
-                  {viewUser.invitation_status === 'pending' && (
-                    <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 99, background: 'var(--amber-light)', color: 'var(--amber)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <Clock size={10} /> Invite Pending
-                    </span>
-                  )}
-                  {viewUser.status === 'active' && viewUser.invitation_status !== 'pending' && (
-                    <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 99, background: 'var(--green-light)', color: 'var(--green)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <CheckCircle size={10} /> Active
-                    </span>
-                  )}
-                </div>
               </div>
             </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
               {[
-                { label: 'Role',           value: viewUser.role?.replace('_', ' ').toUpperCase() },
-                { label: 'Department',     value: viewUser.department || '—' },
-                { label: 'Phone',          value: viewUser.phone      || '—' },
-                { label: 'Country Access', value: viewUser.country_access === 'ALL' ? '🌍 All' : (viewUser.country_access || 'US').split(',').map(c => c.trim() === 'PK' ? '🇵🇰 Pakistan' : '🇺🇸 USA').join(', ') },
-                { label: 'Last Login',     value: viewUser.last_login_at ? fmtDateTime(viewUser.last_login_at) : 'Never' },
-                { label: 'Member Since',   value: fmtDateTime(viewUser.created_at) },
+                { label: 'Role',         value: viewUser.role?.replace('_', ' ').toUpperCase() },
+                { label: 'Department',   value: viewUser.department || '—' },
+                { label: 'Phone',        value: viewUser.phone      || '—' },
+                { label: 'Country',      value: viewUser.country_access === 'ALL' ? '🌍 All' : (viewUser.country_access || 'US').split(',').map(c => c.trim() === 'PK' ? '🇵🇰 PK' : '🇺🇸 US').join(', ') },
+                { label: 'Last Login',   value: viewUser.last_login_at ? fmtDateTime(viewUser.last_login_at) : 'Never' },
+                { label: 'Member Since', value: fmtDateTime(viewUser.created_at) },
               ].map(({ label, value }) => (
                 <div key={label}>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 }}>{label}</div>
-                  <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', textTransform: label === 'Role' ? 'capitalize' : 'none' }}>{value}</div>
+                  <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>{value}</div>
                 </div>
               ))}
             </div>
-
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+            <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end' }}>
               <button className={fStyles.cancelBtn} onClick={() => setViewUser(null)}>Close</button>
-              <button className={fStyles.submitBtn} onClick={() => sendResetEmail(viewUser.email)}>
-                <Mail size={14} /> {viewUser.invitation_status === 'pending' ? 'Resend Invite' : 'Send Password Reset'}
-              </button>
             </div>
           </div>
         </Modal>
