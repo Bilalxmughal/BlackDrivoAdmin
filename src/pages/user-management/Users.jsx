@@ -101,8 +101,14 @@ export default function Users() {
 
       const emailClean = form.email.toLowerCase().trim()
 
-      // Step 1: Create auth user via signUp
-      // Make sure "Confirm email" is OFF in Supabase Auth settings
+      // Save current admin session BEFORE signUp replaces it
+      const { data: { session: adminSession } } = await supabase.auth.getSession()
+      if (!adminSession) throw new Error('Admin session lost. Please re-login.')
+
+      const adminEmail    = adminSession.user.email
+      const adminPassword = form._adminPass // not available — use token refresh instead
+
+      // Step 1: Create new user
       const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
         email:    emailClean,
         password: form.tempPassword,
@@ -112,9 +118,17 @@ export default function Users() {
       if (signUpErr) throw new Error('Auth error: ' + signUpErr.message)
 
       const newUserId = signUpData?.user?.id
-      if (!newUserId) throw new Error('No user ID returned. Make sure "Confirm email" is OFF in Supabase Auth settings.')
+      if (!newUserId) throw new Error('No user ID returned. Check Supabase Auth → disable "Confirm email".')
 
-      // Step 2: Upsert into users table with full details
+      // Step 2: Immediately restore admin session using refresh token
+      if (adminSession.refresh_token) {
+        await supabase.auth.setSession({
+          access_token:  adminSession.access_token,
+          refresh_token: adminSession.refresh_token,
+        })
+      }
+
+      // Step 3: Insert new user record using admin's restored session
       const { error: dbErr } = await supabase.from('users').upsert({
         id:                newUserId,
         name:              form.name.trim(),
@@ -128,8 +142,6 @@ export default function Users() {
       }, { onConflict: 'id' })
 
       if (dbErr) {
-        console.error('DB upsert error:', dbErr)
-        // Try by email
         const { error: e2 } = await supabase.from('users').upsert({
           id:                newUserId,
           name:              form.name.trim(),
