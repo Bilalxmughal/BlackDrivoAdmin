@@ -15,13 +15,4 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
     detectSessionInUrl: true,
     storageKey:         'blackdrivo-auth',
   },
-  global: {
-    headers: { 'x-app-name': 'blackdrivo-admin' },
-  },
-  db: {
-    schema: 'public',
-  },
-  realtime: {
-    timeout: 30000,
-  },
 })

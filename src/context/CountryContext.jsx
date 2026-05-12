@@ -4,44 +4,39 @@ import { createContext, useState, useCallback } from 'react'
 export const CountryContext = createContext(null)
 
 export const CountryProvider = ({ children }) => {
-  const [selectedCountry, setSelectedCountry]     = useState('US') // default US, not null
-  const [userCountryAccess, setUserCountryAccess] = useState(null)
-  const [allowedCountries, setAllowedCountries]   = useState(['US'])
-  const [initialized, setInitialized]             = useState(false)
+  const [selectedCountry, setSelected]        = useState('US')
+  const [userCountryAccess, setAccess]        = useState(null)
+  const [allowedCountries, setAllowed]        = useState(['US'])
+  const [initialized, setInitialized]         = useState(false)
 
   const initCountry = useCallback((countryAccess) => {
-    setUserCountryAccess(countryAccess)
+    if (!countryAccess) return
 
-    let allowed = []
-    if (!countryAccess || countryAccess === 'ALL') {
-      allowed = ['PK', 'US']
-    } else {
-      allowed = countryAccess.split(',').map(c => c.trim()).filter(Boolean)
-    }
-    setAllowedCountries(allowed)
+    setAccess(countryAccess)
 
-    // Check session storage for last selected country
+    const allowed = countryAccess === 'ALL'
+      ? ['PK', 'US']
+      : countryAccess.split(',').map(c => c.trim()).filter(Boolean)
+
+    setAllowed(allowed)
+
     const stored = sessionStorage.getItem('bd_country')
-    const canUseStored = stored && (countryAccess === 'ALL' || allowed.includes(stored))
-
-    setSelectedCountry(canUseStored ? stored : (allowed[0] || 'US'))
+    const valid  = stored && (countryAccess === 'ALL' || allowed.includes(stored))
+    setSelected(valid ? stored : allowed[0] || 'US')
     setInitialized(true)
   }, [])
 
-  const canSwitch = allowedCountries.length > 1
-
   const switchCountry = useCallback((code) => {
-    if (!canSwitch) return
-    setSelectedCountry(code)
+    setSelected(code)
     sessionStorage.setItem('bd_country', code)
-  }, [canSwitch])
+  }, [])
 
   return (
     <CountryContext.Provider value={{
       selectedCountry,
       setSelectedCountry: switchCountry,
       initCountry,
-      canSwitch,
+      canSwitch:          allowedCountries.length > 1,
       allowedCountries,
       userCountryAccess,
       initialized,
