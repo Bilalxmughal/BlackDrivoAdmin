@@ -7,15 +7,15 @@ import { useAuth } from '../../hooks/useAuth'
 import { useCountry } from '../../hooks/useCountry'
 
 export default function AppLayout() {
-  const [collapsed, setCollapsed] = useState(false)
-  const { userProfile } = useAuth()
-  const { selectedCountry, initCountry } = useCountry()
+  const [collapsed, setCollapsed]     = useState(false)
+  const { userProfile }               = useAuth()
+  const { initCountry, initialized }  = useCountry()
 
   useEffect(() => {
-    if (userProfile?.country_access && !selectedCountry) {
+    if (userProfile?.country_access && !initialized) {
       initCountry(userProfile.country_access)
     }
-  }, [userProfile])
+  }, [userProfile, initialized])
 
   const mainStyle = {
     marginLeft:  collapsed ? 'var(--sidebar-collapsed)' : 'var(--sidebar-width)',
@@ -33,7 +33,7 @@ export default function AppLayout() {
   return (
     <div style={{ display: 'flex' }}>
       <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
-      <TopBar sidebarCollapsed={collapsed} collapsed={collapsed} setCollapsed={setCollapsed} />
+      <TopBar sidebarCollapsed={collapsed} />
       <main style={mainStyle}>
         <Outlet />
       </main>

@@ -1,19 +1,17 @@
 // src/context/CountryContext.jsx
-import { createContext, useState } from 'react'
+import { createContext, useState, useCallback } from 'react'
 
 export const CountryContext = createContext(null)
 
 export const CountryProvider = ({ children }) => {
-  const [selectedCountry, setSelectedCountry] = useState(null)
+  const [selectedCountry, setSelectedCountry]     = useState('US') // default US, not null
   const [userCountryAccess, setUserCountryAccess] = useState(null)
-  // array of allowed countries e.g. ['PK'] or ['PK','US'] or ['ALL']
-  const [allowedCountries, setAllowedCountries] = useState([])
+  const [allowedCountries, setAllowedCountries]   = useState(['US'])
+  const [initialized, setInitialized]             = useState(false)
 
-  const initCountry = (countryAccess) => {
-    // countryAccess is text: 'PK' | 'US' | 'ALL' | 'PK,US'
+  const initCountry = useCallback((countryAccess) => {
     setUserCountryAccess(countryAccess)
 
-    // Parse allowed countries
     let allowed = []
     if (!countryAccess || countryAccess === 'ALL') {
       allowed = ['PK', 'US']
@@ -22,23 +20,21 @@ export const CountryProvider = ({ children }) => {
     }
     setAllowedCountries(allowed)
 
-    // Set initial selected country
+    // Check session storage for last selected country
     const stored = sessionStorage.getItem('bd_country')
-    if (stored && (countryAccess === 'ALL' || allowed.includes(stored))) {
-      setSelectedCountry(stored)
-    } else {
-      setSelectedCountry(allowed[0] || 'US')
-    }
-  }
+    const canUseStored = stored && (countryAccess === 'ALL' || allowed.includes(stored))
 
-  // super_admin & admin with multiple countries can switch
-  const canSwitch = allowedCountries.length > 1 || userCountryAccess === 'ALL'
+    setSelectedCountry(canUseStored ? stored : (allowed[0] || 'US'))
+    setInitialized(true)
+  }, [])
 
-  const switchCountry = (code) => {
+  const canSwitch = allowedCountries.length > 1
+
+  const switchCountry = useCallback((code) => {
     if (!canSwitch) return
     setSelectedCountry(code)
     sessionStorage.setItem('bd_country', code)
-  }
+  }, [canSwitch])
 
   return (
     <CountryContext.Provider value={{
@@ -48,6 +44,7 @@ export const CountryProvider = ({ children }) => {
       canSwitch,
       allowedCountries,
       userCountryAccess,
+      initialized,
     }}>
       {children}
     </CountryContext.Provider>

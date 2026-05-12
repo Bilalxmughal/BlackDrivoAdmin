@@ -109,12 +109,19 @@ export default function Users() {
         options:  { data: { name: form.name.trim() } }
       })
 
+<<<<<<< HEAD
       if (signUpErr) throw new Error(signUpErr.message)
 
       // signUp returns user even if they already exist (Supabase behavior)
       // Check if it's a real new user or existing
       const newUserId = signUpData?.user?.id
       if (!newUserId) throw new Error('Could not create user. Check Supabase Auth → Email settings → disable "Confirm email".')
+=======
+      if (signUpErr) throw new Error('Auth error: ' + signUpErr.message)
+
+      const newUserId = signUpData?.user?.id
+      if (!newUserId) throw new Error('No user ID returned. Make sure "Confirm email" is OFF in Supabase Auth settings.')
+>>>>>>> 09552f8 (Speed Add)
 
       // Step 2: Upsert into users table with full details
       const { error: dbErr } = await supabase.from('users').upsert({
@@ -130,8 +137,14 @@ export default function Users() {
       }, { onConflict: 'id' })
 
       if (dbErr) {
+<<<<<<< HEAD
         // Try upsert by email if id conflict
         const { error: emailUpsertErr } = await supabase.from('users').upsert({
+=======
+        console.error('DB upsert error:', dbErr)
+        // Try by email
+        const { error: e2 } = await supabase.from('users').upsert({
+>>>>>>> 09552f8 (Speed Add)
           id:                newUserId,
           name:              form.name.trim(),
           email:             emailClean,
@@ -142,8 +155,12 @@ export default function Users() {
           status:            'active',
           invitation_status: 'password_change_required',
         }, { onConflict: 'email' })
+<<<<<<< HEAD
 
         if (emailUpsertErr) console.warn('DB warn:', emailUpsertErr.message)
+=======
+        if (e2) throw new Error('DB error: ' + e2.message)
+>>>>>>> 09552f8 (Speed Add)
       }
 
       // 3. Show credentials to admin
@@ -184,7 +201,11 @@ export default function Users() {
   }
 
   const formatCountry = (ca) => {
+<<<<<<< HEAD
     if (!ca || ca === 'ALL') return '🌍'
+=======
+    if (!ca || ca === 'ALL') return ''
+>>>>>>> 09552f8 (Speed Add)
     return ca.split(',').map(c => c.trim() === 'PK' ? '🇵🇰' : '🇺🇸').join(' ')
   }
 
@@ -375,7 +396,11 @@ export default function Users() {
               <label className={fStyles.label}>Country Access <span className={fStyles.required}>*</span></label>
               {form.role === 'super_admin'
                 ? <div style={{ padding: '12px 14px', background: 'var(--bg-main)', borderRadius: 'var(--radius-md)', border: '1.5px solid var(--border)', fontSize: 14, color: 'var(--text-muted)' }}>
+<<<<<<< HEAD
                     🌍 All Countries — Super Admin gets full access
+=======
+                    All Countries — Super Admin gets full access
+>>>>>>> 09552f8 (Speed Add)
                   </div>
                 : <div style={{ display: 'flex', gap: 10 }}>
                     {COUNTRY_OPTIONS.map(c => (
@@ -443,7 +468,11 @@ export default function Users() {
               { label: 'Email',        value: createdUser?.email },
               { label: 'Password',     value: createdUser?.password },
               { label: 'Role',         value: createdUser?.role?.replace('_', ' ').toUpperCase() },
+<<<<<<< HEAD
               { label: 'Country',      value: createdUser?.country === 'ALL' ? '🌍 All Countries' : createdUser?.country?.split(',').map(c => c === 'PK' ? '🇵🇰 Pakistan' : '🇺🇸 USA').join(', ') },
+=======
+              { label: 'Country',      value: createdUser?.country === 'ALL' ? 'All Countries' : createdUser?.country?.split(',').map(c => c === 'PK' ? '🇵🇰 Pakistan' : '🇺🇸 USA').join(', ') },
+>>>>>>> 09552f8 (Speed Add)
             ].map(({ label, value }) => (
               <div key={label} style={{ display: 'flex', marginBottom: 10 }}>
                 <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', width: 100, flexShrink: 0 }}>{label}</span>
@@ -487,7 +516,11 @@ export default function Users() {
                 { label: 'Role',         value: viewUser.role?.replace('_', ' ').toUpperCase() },
                 { label: 'Department',   value: viewUser.department || '—' },
                 { label: 'Phone',        value: viewUser.phone      || '—' },
+<<<<<<< HEAD
                 { label: 'Country',      value: viewUser.country_access === 'ALL' ? '🌍 All' : (viewUser.country_access || 'US').split(',').map(c => c.trim() === 'PK' ? '🇵🇰 PK' : '🇺🇸 US').join(', ') },
+=======
+                { label: 'Country',      value: viewUser.country_access === 'ALL' ? 'All' : (viewUser.country_access || 'US').split(',').map(c => c.trim() === 'PK' ? 'PK' : 'US').join(', ') },
+>>>>>>> 09552f8 (Speed Add)
                 { label: 'Last Login',   value: viewUser.last_login_at ? fmtDateTime(viewUser.last_login_at) : 'Never' },
                 { label: 'Member Since', value: fmtDateTime(viewUser.created_at) },
               ].map(({ label, value }) => (
