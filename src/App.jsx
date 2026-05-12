@@ -20,6 +20,7 @@ import RolesPermissions from './pages/admin-settings/RolesPermissions'
 import ActivityLog from './pages/activity-log/ActivityLog'
 import Profile from './pages/profile/Profile'
 import AppSettings from './pages/app-settings/AppSettings'
+import Communications from './pages/communications/Communications'
 
 // Stub placeholder — phases 3-7 mein replace hoga
 const Stub = ({ name }) => (
@@ -64,6 +65,7 @@ function App() {
           <Route path="passengers"   element={<Passengers />} />
           <Route path="passengers/:id" element={<PassengerDetail />} />
           <Route path="app-settings" element={<AppSettings />} />
+          <Route path="communications" element={<Communications />} />
           <Route path="roles"        element={<RolesPermissions />} />
           <Route path="users"        element={<Users />} />
           <Route path="activity-log" element={<ActivityLog />} />

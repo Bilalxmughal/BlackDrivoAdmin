@@ -1,6 +1,6 @@
 // src/pages/user-management/Users.jsx
 import { useEffect, useState, useCallback } from 'react'
-import { Plus, Eye, Trash2, Search, RefreshCw, Shield, Copy, CheckCircle } from 'lucide-react'
+import { Plus, Eye, Trash2, Search, RefreshCw, Shield, Copy, CheckCircle, Edit2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { supabase } from '../../supabase/client'
 import Modal from '../../components/shared/Modal'
@@ -43,11 +43,42 @@ export default function Users() {
   const [roleFilter, setRole]   = useState('all')
   const [addOpen, setAddOpen]   = useState(false)
   const [viewUser, setViewUser] = useState(null)
-  const [createdUser, setCreated]= useState(null) // show after creation
-  const [form, setForm]         = useState(INIT)
-  const [errors, setErrors]     = useState({})
-  const [saving, setSaving]     = useState(false)
-  const [copied, setCopied]     = useState(false)
+  const [createdUser, setCreated]  = useState(null)
+  const [form, setForm]            = useState(INIT)
+  const [errors, setErrors]        = useState({})
+  const [saving, setSaving]        = useState(false)
+  const [copied, setCopied]        = useState(false)
+  const [editMode, setEditMode]    = useState(false)
+  const [editForm, setEditForm]    = useState({})
+
+  const handleUpdate = async () => {
+    if (!viewUser) return
+    setSaving(true)
+    try {
+      const countryAccess = editForm.role === 'super_admin'
+        ? 'ALL'
+        : (editForm.countries || ['US']).join(',')
+
+      const { error } = await supabase.from('users').update({
+        name:           editForm.name,
+        phone:          editForm.phone       || null,
+        department:     editForm.department  || null,
+        role:           editForm.role,
+        country_access: countryAccess,
+        status:         editForm.status,
+      }).eq('id', viewUser.id)
+
+      if (error) throw error
+      toast.success('User updated!')
+      setEditMode(false)
+      setViewUser(null)
+      fetch()
+    } catch (err) {
+      toast.error(err.message || 'Update failed')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   const fetch = useCallback(async () => {
     setLoading(true)
@@ -274,7 +305,7 @@ export default function Users() {
                   const rc = ROLE_COLORS[u.role] || ROLE_COLORS.ops
                   const sb = statusBadge(u)
                   return (
-                    <tr key={u.id} className={styles.tr} onClick={() => setViewUser(u)}>
+                    <tr key={u.id} className={styles.tr} onClick={() => { setViewUser(u); setEditMode(false) }}>
                       <td className={styles.td}>
                         <div className={styles.personCell}>
                           <div className={styles.avatar} style={{ background: '#111' }}>{getInitials(u.name)}</div>
@@ -479,38 +510,167 @@ export default function Users() {
         </div>
       </Modal>
 
-      {/* ── View User Modal ── */}
+      {/* ── View/Edit User Modal ── */}
       {viewUser && (
-        <Modal open={!!viewUser} onClose={() => setViewUser(null)} title="User Details" width={460}>
-          <div style={{ padding: 24 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
-              <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, color: '#fff' }}>
-                {getInitials(viewUser.name)}
-              </div>
-              <div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700 }}>{viewUser.name}</div>
-                <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>{viewUser.email}</div>
-              </div>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-              {[
-                { label: 'Role',         value: viewUser.role?.replace('_', ' ').toUpperCase() },
-                { label: 'Department',   value: viewUser.department || '—' },
-                { label: 'Phone',        value: viewUser.phone      || '—' },
-                { label: 'Country',      value: viewUser.country_access === 'ALL' ? '🌍 All' : (viewUser.country_access || 'US').split(',').map(c => c.trim() === 'PK' ? '🇵🇰 PK' : '🇺🇸 US').join(', ') },
-                { label: 'Last Login',   value: viewUser.last_login_at ? fmtDateTime(viewUser.last_login_at) : 'Never' },
-                { label: 'Member Since', value: fmtDateTime(viewUser.created_at) },
-              ].map(({ label, value }) => (
-                <div key={label}>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 }}>{label}</div>
-                  <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>{value}</div>
+        <Modal open={!!viewUser} onClose={() => { setViewUser(null); setEditMode(false) }} title={editMode ? 'Edit User' : 'User Details'} width={560}>
+          {!editMode ? (
+            /* ── View Mode ── */
+            <div style={{ padding: 24 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
+                <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, color: '#fff' }}>
+                  {getInitials(viewUser.name)}
                 </div>
-              ))}
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700 }}>{viewUser.name}</div>
+                  <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>{viewUser.email}</div>
+                </div>
+                <button onClick={() => {
+                  setEditForm({
+                    name:           viewUser.name || '',
+                    phone:          viewUser.phone || '',
+                    department:     viewUser.department || '',
+                    role:           viewUser.role || 'ops',
+                    countries:      viewUser.country_access === 'ALL'
+                      ? ['PK','US']
+                      : (viewUser.country_access || 'US').split(',').map(c=>c.trim()),
+                    status:         viewUser.status || 'active',
+                  })
+                  setEditMode(true)
+                }}
+                  style={{ height: 36, padding: '0 16px', border: '1.5px solid var(--border)', borderRadius: 8, background: 'var(--bg-main)', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', fontFamily: 'var(--font-body)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Edit2 size={13} /> Edit
+                </button>
+              </div>
+
+              {/* Status badge */}
+              <div style={{ marginBottom: 20 }}>
+                {(() => { const sb = statusBadge(viewUser); return (
+                  <span style={{ fontSize: 12, fontWeight: 600, padding: '4px 12px', borderRadius: 99, background: sb.bg, color: sb.color }}>
+                    {sb.label}
+                  </span>
+                )})()}
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+                {[
+                  { label: 'Role',         value: viewUser.role?.replace('_', ' ').toUpperCase() },
+                  { label: 'Department',   value: viewUser.department || '—' },
+                  { label: 'Phone',        value: viewUser.phone      || '—' },
+                  { label: 'Country',      value: viewUser.country_access === 'ALL' ? '🌍 All Countries' : (viewUser.country_access || 'US').split(',').map(c => c.trim() === 'PK' ? '🇵🇰 Pakistan' : '🇺🇸 USA').join(', ') },
+                  { label: 'Last Login',   value: viewUser.last_login_at ? fmtDateTime(viewUser.last_login_at) : 'Never' },
+                  { label: 'Member Since', value: fmtDateTime(viewUser.created_at) },
+                ].map(({ label, value }) => (
+                  <div key={label}>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 }}>{label}</div>
+                    <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>{value}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <button className={fStyles.cancelBtn} onClick={() => setViewUser(null)}>Close</button>
+              </div>
             </div>
-            <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end' }}>
-              <button className={fStyles.cancelBtn} onClick={() => setViewUser(null)}>Close</button>
-            </div>
-          </div>
+          ) : (
+            /* ── Edit Mode ── */
+            <>
+              <div className={fStyles.body}>
+                <div className={fStyles.grid}>
+                  <div className={fStyles.sectionTitle}>Edit User Information</div>
+
+                  <div className={fStyles.field}>
+                    <label className={fStyles.label}>Full Name</label>
+                    <input className={fStyles.input} value={editForm.name}
+                      onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} />
+                  </div>
+
+                  <div className={fStyles.field}>
+                    <label className={fStyles.label}>Phone</label>
+                    <input className={fStyles.input} value={editForm.phone}
+                      onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))} />
+                  </div>
+
+                  <div className={fStyles.field}>
+                    <label className={fStyles.label}>Department</label>
+                    <input className={fStyles.input} value={editForm.department}
+                      onChange={e => setEditForm(f => ({ ...f, department: e.target.value }))} />
+                  </div>
+
+                  <div className={fStyles.field}>
+                    <label className={fStyles.label}>Status</label>
+                    <select className={fStyles.select} value={editForm.status}
+                      onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))}>
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                      <option value="suspended">Suspended</option>
+                    </select>
+                  </div>
+
+                  <div className={`${fStyles.field} ${fStyles.full}`}>
+                    <label className={fStyles.label}>Role</label>
+                    <select className={fStyles.select} value={editForm.role}
+                      onChange={e => {
+                        const r = e.target.value
+                        setEditForm(f => ({
+                          ...f, role: r,
+                          countries: r === 'super_admin' ? ['PK','US'] : f.countries
+                        }))
+                      }}>
+                      {ROLES.map(r => <option key={r} value={r}>{r.replace('_', ' ').toUpperCase()}</option>)}
+                    </select>
+                    {/* Role description */}
+                    <div style={{ marginTop: 8, padding: '10px 12px', background: 'var(--bg-main)', borderRadius: 8, fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.7 }}>
+                      {editForm.role === 'super_admin' && '✅ Full access — all pages, all countries, all actions'}
+                      {editForm.role === 'admin'       && '✅ All pages · ❌ Roles & Admin Settings'}
+                      {editForm.role === 'ops'         && '✅ Bookings, Dispatch, Passengers, Drivers · ❌ Settings'}
+                      {editForm.role === 'dispatcher'  && '✅ Bookings & Dispatch Map only · ❌ Fleet, Settings'}
+                      {editForm.role === 'finance'     && '✅ Dashboard & Activity Log read-only · ❌ Operations'}
+                    </div>
+                  </div>
+
+                  <div className={`${fStyles.field} ${fStyles.full}`}>
+                    <label className={fStyles.label}>Country Access</label>
+                    {editForm.role === 'super_admin'
+                      ? <div style={{ padding: '12px 14px', background: 'var(--bg-main)', borderRadius: 8, border: '1.5px solid var(--border)', fontSize: 13, color: 'var(--text-muted)' }}>
+                          🌍 All Countries — Super Admin has full access
+                        </div>
+                      : <div style={{ display: 'flex', gap: 10 }}>
+                          {COUNTRY_OPTIONS.map(c => (
+                            <button key={c.code} type="button"
+                              onClick={() => setEditForm(f => {
+                                const curr = f.countries || []
+                                const next = curr.includes(c.code)
+                                  ? curr.filter(x => x !== c.code)
+                                  : [...curr, c.code]
+                                return { ...f, countries: next.length ? next : curr }
+                              })}
+                              style={{
+                                flex: 1, padding: '14px 16px', borderRadius: 12, cursor: 'pointer',
+                                border: (editForm.countries || []).includes(c.code) ? '2px solid var(--accent)' : '2px solid var(--border)',
+                                background: (editForm.countries || []).includes(c.code) ? 'var(--accent-light)' : 'var(--bg-main)',
+                                display: 'flex', alignItems: 'center', gap: 10, transition: 'all 0.15s',
+                              }}>
+                              <span style={{ fontSize: 28 }}>{c.flag}</span>
+                              <div style={{ textAlign: 'left' }}>
+                                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{c.label}</div>
+                                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                                  {(editForm.countries || []).includes(c.code) ? '✓ Access granted' : 'No access'}
+                                </div>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                    }
+                  </div>
+                </div>
+              </div>
+              <div className={fStyles.footer}>
+                <button className={fStyles.cancelBtn} onClick={() => setEditMode(false)}>Cancel</button>
+                <button className={fStyles.submitBtn} onClick={handleUpdate} disabled={saving}>
+                  {saving ? <span className={fStyles.spinner} /> : 'Save Changes'}
+                </button>
+              </div>
+            </>
+          )}
         </Modal>
       )}
     </div>

@@ -3,12 +3,11 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, BookOpen, MapPin, Users, Car, Truck,
   Bell, Settings, Shield, UserCog, Activity, User,
-  LogOut, ChevronLeft,
+  LogOut, ChevronLeft, MessageSquare,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { logoutUser } from '../../supabase/auth'
 import { useAuth } from '../../hooks/useAuth'
-
 import styles from './Sidebar.module.css'
 
 const NAV = [
@@ -41,11 +40,12 @@ const NAV = [
   {
     section: 'Settings',
     items: [
-      { to: '/app-settings',   icon: Bell,    label: 'App Comms'    },
-      { to: '/roles',          icon: Shield,  label: 'Roles & Access' },
-      { to: '/users',          icon: UserCog, label: 'User Management' },
-      { to: '/activity-log',   icon: Activity,label: 'Activity Log'  },
-      { to: '/profile',        icon: User,    label: 'My Profile'   },
+      { to: '/communications', icon: MessageSquare, label: 'Team Chat'       },
+      { to: '/app-settings',   icon: Bell,          label: 'App Comms'       },
+      { to: '/roles',          icon: Shield,        label: 'Roles & Access'  },
+      { to: '/users',          icon: UserCog,       label: 'User Management' },
+      { to: '/activity-log',   icon: Activity,      label: 'Activity Log'    },
+      { to: '/profile',        icon: User,          label: 'My Profile'      },
     ],
   },
 ]
@@ -111,6 +111,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
             <LogOut size={17} />
           </span>
           <span className={styles.navLabel}>Logout</span>
+          <span className={styles.tooltip}>Logout</span>
         </button>
       </div>
     </aside>
