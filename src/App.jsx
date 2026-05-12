@@ -1,6 +1,7 @@
 // src/App.jsx
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
+import { SpeedInsights } from '@vercel/speed-insights/react'
 import ProtectedRoute from './components/shared/ProtectedRoute'
 import Login from './pages/auth/Login'
 import ForgotPassword from './pages/auth/ForgotPassword'
@@ -43,6 +44,7 @@ function App() {
           error:   { iconTheme: { primary: '#E8533A', secondary: '#fff' } },
         }}
       />
+      <SpeedInsights />
       <Routes>
         {/* Public */}
         <Route path="/login"           element={<Login />} />
