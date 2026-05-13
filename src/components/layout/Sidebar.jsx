@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, BookOpen, MapPin, Users, Car, Truck,
   Bell, Settings, Shield, UserCog, Activity, User,
-  LogOut, ChevronLeft, MessageSquare,
+  LogOut, ChevronLeft, MessageSquare, Globe,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { logoutUser } from '../../supabase/auth'
@@ -41,6 +41,7 @@ const NAV = [
     section: 'Settings',
     items: [
       { to: '/communications', icon: MessageSquare, label: 'Team Chat'       },
+      { to: '/countries',      icon: Globe,         label: 'Countries'       },
       { to: '/app-settings',   icon: Bell,          label: 'App Comms'       },
       { to: '/roles',          icon: Shield,        label: 'Roles & Access'  },
       { to: '/users',          icon: UserCog,       label: 'User Management' },
