@@ -7,6 +7,7 @@ import { useAuth } from '../../../hooks/useAuth'
 import Modal from '../../../components/shared/Modal'
 import CountryCitySelect from '../../../components/shared/CountryCitySelect'
 import styles from '../../../components/shared/Form.module.css'
+import { supabaseAdmin } from '../../../supabase/adminClient'
 
 const INIT = { name: '', email: '', country: '', city: '', phone: '', notes: '' }
 
@@ -29,32 +30,47 @@ export default function AddPassengerForm({ open, onClose, onSuccess }) {
   }
 
   const handleSubmit = async () => {
-    const errs = validate()
-    if (Object.keys(errs).length) { setErrors(errs); return }
-    setSaving(true)
-    try {
-      const { error } = await supabase.from('passengers').insert({
-        name:         form.name,
-        email:        form.email || null,
-        phone:        form.phone,
-        city:         form.city,
-        country:      form.country === 'PK' ? 'Pakistan' : 'United States',
-        country_code: form.country,
-        notes:        form.notes || null,
-        source:       'admin_created',
-        created_by:   userProfile?.id || null,
-      })
-      if (error) throw error
-      toast.success('Passenger added!')
-      setForm(INIT)
-      onSuccess()
-      onClose()
-    } catch (err) {
-      toast.error(err.message || 'Failed to add passenger')
-    } finally {
-      setSaving(false)
-    }
+  const errs = validate()
+  if (Object.keys(errs).length) { setErrors(errs); return }
+  if (!form.email.trim()) { setErrors({ email: 'Email required for app login' }); return }
+  setSaving(true)
+  try {
+    // Step 1: auth.users mein account banao
+    const tempPassword = 'BlackDrivo@' + Math.floor(1000 + Math.random() * 9000)
+
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email:         form.email.trim().toLowerCase(),
+      password:      tempPassword,
+      email_confirm: true,
+      user_metadata: { name: form.name, phone: form.phone },
+    })
+    if (authError) throw authError
+
+    // Step 2: passengers table mein insert
+    const { error } = await supabase.from('passengers').insert({
+      id:           authData.user.id,
+      name:         form.name,
+      email:        form.email.trim().toLowerCase(),
+      phone:        form.phone,
+      city:         form.city,
+      country:      form.country === 'PK' ? 'Pakistan' : 'United States',
+      country_code: form.country,
+      notes:        form.notes || null,
+      source:       'admin_created',
+      created_by:   userProfile?.id || null,
+    })
+    if (error) throw error
+
+    toast.success(`Passenger added! Temp password: ${tempPassword}`)
+    setForm(INIT)
+    onSuccess()
+    onClose()
+  } catch (err) {
+    toast.error(err.message || 'Failed to add passenger')
+  } finally {
+    setSaving(false)
   }
+}
 
   return (
     <Modal open={open} onClose={onClose} title="Add New Passenger" width={580}>
