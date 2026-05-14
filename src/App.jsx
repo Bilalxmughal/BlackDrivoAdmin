@@ -21,7 +21,6 @@ import ActivityLog from './pages/activity-log/ActivityLog'
 import Profile from './pages/profile/Profile'
 import AppSettings from './pages/app-settings/AppSettings'
 import Countries      from './pages/countries/Countries'
-import AppPassengers  from './pages/app-data/AppPassengers'
 import Communications from './pages/communications/Communications'
 
 // Stub placeholder — phases 3-7 mein replace hoga
@@ -68,7 +67,6 @@ function App() {
           <Route path="passengers/:id" element={<PassengerDetail />} />
           <Route path="app-settings" element={<AppSettings />} />
           <Route path="countries" element={<Countries />} />
-          <Route path="app-passengers" element={<AppPassengers />} />
           <Route path="communications" element={<Communications />} />
           <Route path="roles"        element={<RolesPermissions />} />
           <Route path="users"        element={<Users />} />
