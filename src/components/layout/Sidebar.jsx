@@ -34,8 +34,7 @@ const NAV = [
   {
     section: 'Clients',
     items: [
-      { to: '/passengers',     icon: Users,      label: 'Passengers'     },
-      { to: '/app-passengers', icon: Smartphone, label: 'App Passengers' },
+      { to: '/passengers', icon: Users, label: 'Passengers' },
     ],
   },
   {
