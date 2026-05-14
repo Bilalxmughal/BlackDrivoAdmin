@@ -20,8 +20,8 @@ const NAV = [
   {
     section: 'Operations',
     items: [
-      { to: '/bookings',  icon: BookOpen,  label: 'Bookings'  },
-      { to: '/dispatch',  icon: MapPin,    label: 'Dispatch'  },
+      { to: '/bookings',  icon: BookOpen, label: 'Bookings' },
+      { to: '/dispatch',  icon: MapPin,   label: 'Dispatch' },
     ],
   },
   {
@@ -34,8 +34,8 @@ const NAV = [
   {
     section: 'Clients',
     items: [
-      { to: '/passengers',     icon: Users,       label: 'Passengers'     },
-      { to: '/app-passengers', icon: Smartphone,  label: 'App Passengers' },
+      { to: '/passengers',     icon: Users,      label: 'Passengers'     },
+      { to: '/app-passengers', icon: Smartphone, label: 'App Passengers' },
     ],
   },
   {
@@ -95,9 +95,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
                   `${styles.navItem} ${isActive ? styles.active : ''}`
                 }
               >
-                <span className={styles.navIcon}>
-                  <Icon size={17} />
-                </span>
+                <span className={styles.navIcon}><Icon size={17} /></span>
                 <span className={styles.navLabel}>{label}</span>
                 <span className={styles.tooltip}>{label}</span>
               </NavLink>
@@ -106,12 +104,10 @@ export default function Sidebar({ collapsed, setCollapsed }) {
         ))}
       </nav>
 
-      {/* Bottom - Logout */}
+      {/* Bottom */}
       <div className={styles.bottom}>
         <button className={styles.logoutBtn} onClick={handleLogout}>
-          <span className={styles.navIcon}>
-            <LogOut size={17} />
-          </span>
+          <span className={styles.navIcon}><LogOut size={17} /></span>
           <span className={styles.navLabel}>Logout</span>
           <span className={styles.tooltip}>Logout</span>
         </button>
