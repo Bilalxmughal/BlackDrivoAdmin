@@ -20,13 +20,13 @@ import RolesPermissions from './pages/admin-settings/RolesPermissions'
 import ActivityLog from './pages/activity-log/ActivityLog'
 import Profile from './pages/profile/Profile'
 import AppSettings from './pages/app-settings/AppSettings'
-import Countries      from './pages/countries/Countries'
+import Countries from './pages/countries/Countries'
 import Communications from './pages/communications/Communications'
+import AppPassengers from './pages/app-data/AppPassengers'
 
-// Stub placeholder — phases 3-7 mein replace hoga
 const Stub = ({ name }) => (
   <div style={{ padding: 32, fontFamily: 'var(--font-display)', fontSize: 20, color: 'var(--text-primary)' }}>
-    {name} — Coming in next phase
+    {name} — Coming soon
   </div>
 )
 
@@ -46,42 +46,34 @@ function App() {
         }}
       />
       <Routes>
-        {/* Public */}
         <Route path="/login"           element={<Login />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/set-password"    element={<SetPassword />} />
 
-        {/* Protected */}
         <Route path="/" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
           <Route index element={<Navigate to="/dashboard" replace />} />
-          <Route path="dashboard"    element={<Dashboard />} />
-          <Route path="bookings"      element={<Bookings />} />
-          <Route path="bookings/new"  element={<NewBooking />} />
-          <Route path="bookings/:id"  element={<BookingDetail />} />
-          <Route path="dispatch"     element={<DispatchMap />} />
-          <Route path="drivers"      element={<Drivers />} />
-          <Route path="drivers/:id"  element={<Stub name="Driver Detail" />} />
-          <Route path="vehicles"     element={<Vehicles />} />
-          <Route path="vehicles/:id" element={<Stub name="Vehicle Detail" />} />
-          <Route path="passengers"   element={<Passengers />} />
+          <Route path="dashboard"      element={<Dashboard />} />
+          <Route path="bookings"       element={<Bookings />} />
+          <Route path="bookings/new"   element={<NewBooking />} />
+          <Route path="bookings/:id"   element={<BookingDetail />} />
+          <Route path="dispatch"       element={<DispatchMap />} />
+          <Route path="drivers"        element={<Drivers />} />
+          <Route path="drivers/:id"    element={<Stub name="Driver Detail" />} />
+          <Route path="vehicles"       element={<Vehicles />} />
+          <Route path="vehicles/:id"   element={<Stub name="Vehicle Detail" />} />
+          <Route path="passengers"     element={<Passengers />} />
           <Route path="passengers/:id" element={<PassengerDetail />} />
-          <Route path="app-settings" element={<AppSettings />} />
-          <Route path="countries" element={<Countries />} />
+          <Route path="app-passengers" element={<AppPassengers />} />
+          <Route path="app-settings"   element={<AppSettings />} />
+          <Route path="countries"      element={<Countries />} />
           <Route path="communications" element={<Communications />} />
-          <Route path="roles"        element={<RolesPermissions />} />
-          <Route path="users"        element={<Users />} />
-          <Route path="activity-log" element={<ActivityLog />} />
-          <Route path="profile"      element={<Profile />} />
+          <Route path="roles"          element={<RolesPermissions />} />
+          <Route path="users"          element={<Users />} />
+          <Route path="activity-log"   element={<ActivityLog />} />
+          <Route path="profile"        element={<Profile />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      </Routes>
-    </>
-  )
-}
-
-export default App
-dashboard" replace />} />
       </Routes>
     </>
   )
