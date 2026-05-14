@@ -22,7 +22,7 @@ import Profile from './pages/profile/Profile'
 import AppSettings from './pages/app-settings/AppSettings'
 import Countries from './pages/countries/Countries'
 import Communications from './pages/communications/Communications'
-
+import AppPassengers from './pages/app-data/AppPassengers'
 
 const Stub = ({ name }) => (
   <div style={{ padding: 32, fontFamily: 'var(--font-display)', fontSize: 20, color: 'var(--text-primary)' }}>
@@ -63,6 +63,7 @@ function App() {
           <Route path="vehicles/:id"   element={<Stub name="Vehicle Detail" />} />
           <Route path="passengers"     element={<Passengers />} />
           <Route path="passengers/:id" element={<PassengerDetail />} />
+          <Route path="app-passengers" element={<AppPassengers />} />
           <Route path="app-settings"   element={<AppSettings />} />
           <Route path="countries"      element={<Countries />} />
           <Route path="communications" element={<Communications />} />
